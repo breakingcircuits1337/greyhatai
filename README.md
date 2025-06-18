@@ -250,7 +250,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 Grey Hat AI is a powerful tool designed for legitimate cybersecurity research and testing. Users are responsible for ensuring their use complies with applicable laws and regulations. The developers assume no responsibility for misuse of this software.
 
----
+---CAI.zip needs to be unziped and placed in a folder named src at root
 
 **🎯 Grey Hat AI - Empowering Cybersecurity Professionals with Advanced AI**
 
