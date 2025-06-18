@@ -65,7 +65,7 @@ Grey Hat AI is a powerful, production-ready AI application designed specifically
 
 3. **Launch Grey Hat AI**:
    ```bash
-   ~/launch_grey_hat_ai.sh
+   ./launch_grey_hat_ai.sh
    ```
 
 The installer will:
