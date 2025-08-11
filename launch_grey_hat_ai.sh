@@ -20,15 +20,38 @@ export PYTHONWARNINGS="ignore::UserWarning:webrtcvad"
 # Ensure CAI is importable: add src/ to PYTHONPATH
 export PYTHONPATH="$(pwd)/src:$PYTHONPATH"
 
-ARGS=("$@")
-# If no --server.port in args, add default
+ARGS=()
 has_port=false
-for a in "${ARGS[@]}"; do
-  if [[ "$a" == --server.port ]]; then has_port=true; break; fi
+i=0
+while [ $i -lt $# ]; do
+  arg="${@:$((i+1)):1}"
+  if [[ "$arg" == "--port" ]]; then
+    # Translate --port X to --server.port X
+    next_arg="${@:$((i+2)):1}"
+    ARGS+=("--server.port")
+    if [[ -n "$next_arg" && ! "$next_arg" =~ ^-- ]]; then
+      ARGS+=("$next_arg")
+      i=$((i+1))
+    fi
+    has_port=true
+  elif [[ "$arg" == "--server.port" ]]; then
+    ARGS+=("$arg")
+    next_arg="${@:$((i+2)):1}"
+    if [[ -n "$next_arg" && ! "$next_arg" =~ ^-- ]]; then
+      ARGS+=("$next_arg")
+      i=$((i+1))
+    fi
+    has_port=true
+  else
+    ARGS+=("$arg")
+  fi
+  i=$((i+1))
 done
+
 if ! $has_port; then
   ARGS+=("--server.port" "8501")
 fi
+
 "$VENV/bin/streamlit" run grey_hat_ai/app.py "${ARGS[@]}"
 
 # Handle deactivate gracefully
