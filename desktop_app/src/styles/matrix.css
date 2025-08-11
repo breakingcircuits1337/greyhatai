@@ -1,0 +1,39 @@
+body.matrix, .matrix-theme {
+  background: #000 !important;
+  color: #00ff41 !important;
+  font-family: "Share Tech Mono", "monospace";
+}
+input, textarea, select {
+  background: #111 !important;
+  color: #00ff41 !important;
+  border: 1px solid #00ff41 !important;
+}
+a, a:visited {
+  color: #00ff41 !important;
+}
+.top-bar, .callout, .card, .button, .menu, .pagination {
+  background: #040a02 !important;
+  color: #00ff41 !important;
+  border-color: #00ff41 !important;
+}
+.button {
+  background: #0d1a0b !important;
+  color: #00ff41 !important;
+  border: 1.5px solid #00ff41 !important;
+}
+
+/* Matrix animation (placeholder) */
+.matrix-animation {
+  width: 100vw;
+  height: 100vh;
+  position: fixed;
+  left: 0; top: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: transparent;
+  display: block;
+}
+@keyframes matrix-fall {
+  0% { opacity: 0; transform: translateY(-100%); }
+  100% { opacity: 1; transform: translateY(100vh); }
+}

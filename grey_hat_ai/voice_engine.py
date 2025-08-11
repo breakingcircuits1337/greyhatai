@@ -15,6 +15,7 @@ import queue
 import time
 import wave
 from typing import Optional, Callable, Dict, Any
+import uuid
 from dataclasses import dataclass
 import tempfile
 
@@ -50,6 +51,12 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class VoiceConfig:
+    def __init__(self, api_key=None, voice_id=None, model=None, provider="elevenlabs"):
+        self.api_key = api_key
+        self.voice_id = voice_id
+        self.model = model
+        # provider: "elevenlabs" (default), "piper"
+        self.provider = provider
     """Configuration for voice engine."""
     # STT Configuration
     whisper_model_size: str = "base"  # tiny, base, small, medium, large
@@ -69,6 +76,15 @@ class VoiceConfig:
 
 
 class VoiceEngine:
+    # Training jobs: job_id -> {status, progress, voice_id}
+    training_jobs: Dict[str, Dict] = {}
+
+    def __init__(self, config: VoiceConfig):
+        self.config = config
+        # ... other init ...
+        # Piper setup (lazy import/instantiation)
+        self._piper = None
+
     """
     Voice engine providing STT and TTS capabilities.
     
@@ -77,6 +93,7 @@ class VoiceEngine:
     - High-quality TTS using Eleven Labs
     - Voice Activity Detection for continuous listening
     - Thread-safe operation for Streamlit integration
+    - Wake word detection and push-to-talk support
     """
     
     def __init__(self, config: VoiceConfig = None):
@@ -84,20 +101,23 @@ class VoiceEngine:
         self.whisper_model = None
         self.vad = None
         self.elevenlabs_configured = False
-        
-        # Audio recording state
-        self.is_listening = False
+
+        # Wake word support
+        self.wake_word = "hey grey hat"
+        self.is_listening = False        # Audio capture running
+        self.is_recording = False        # True if wake word detected and in command mode
+
         self.audio_queue = queue.Queue()
         self.recording_thread = None
-        
+
         # Callbacks
         self.on_speech_detected: Optional[Callable[[str], None]] = None
         self.on_listening_start: Optional[Callable[[], None]] = None
         self.on_listening_stop: Optional[Callable[[], None]] = None
-        
+
         # Audio cache for TTS
         self.tts_cache: Dict[str, bytes] = {}
-        
+
         self._initialize_components()
     
     def _initialize_components(self):
@@ -165,50 +185,45 @@ class VoiceEngine:
             logger.error(f"Error fetching voices: {e}")
             return {}
     
-    def start_listening(self, callback: Callable[[str], None] = None):
+    def start_wake_listen(self, callback: Callable[[str], None] = None):
         """
-        Start continuous speech recognition.
-        
-        Args:
-            callback: Function to call when speech is detected
+        Start continuous listening in wake-word mode.
         """
         if self.is_listening:
             logger.warning("Already listening")
             return
-            
+
         if not self.whisper_model:
             logger.error("Whisper model not available")
             return
-            
+
         if not sd or not np:
             logger.error("sounddevice or numpy not available")
             return
-        
+
         if callback:
             self.on_speech_detected = callback
-            
+
+        self.is_recording = False  # Not yet triggered
         self.is_listening = True
         self.recording_thread = threading.Thread(target=self._recording_loop, daemon=True)
         self.recording_thread.start()
-        
-        if self.on_listening_start:
-            self.on_listening_start()
-            
-        logger.info("Started listening for speech")
-    
+        logger.info("Started wake-word listening (wake word: %s)", self.wake_word)
+
     def stop_listening(self):
-        """Stop continuous speech recognition."""
+        """Stop all listening (wake or command)."""
         if not self.is_listening:
             return
-            
+
         self.is_listening = False
-        
+        self.is_recording = False
+
         if self.recording_thread:
             self.recording_thread.join(timeout=2.0)
-            
+
         if self.on_listening_stop:
             self.on_listening_stop()
-            
+
         logger.info("Stopped listening for speech")
     
     def _recording_loop(self):
@@ -288,20 +303,48 @@ class VoiceEngine:
             return True  # Assume speech on error
     
     def _process_audio_buffer(self, audio_buffer):
-        """Process accumulated audio buffer for speech recognition."""
+        """
+        Process accumulated audio buffer for speech recognition.
+        Implements wake-word detection and push-to-talk state.
+        """
         if not audio_buffer:
             return
-            
+
         try:
             # Concatenate audio chunks
             audio_data = np.concatenate(audio_buffer)
-            
+
             # Transcribe using Whisper
             text = self._transcribe_audio(audio_data)
+            if not text or not text.strip():
+                return
+
+            text_stripped = text.strip().lower()
             
-            if text and text.strip() and self.on_speech_detected:
+            # Wake-word mode: listen for wake word before entering recording mode
+            if not self.is_recording:
+                if self.wake_word in text_stripped:
+                    self.is_recording = True
+                    if self.on_listening_start:
+                        self.on_listening_start()
+                    # Optionally: remove wake word from command
+                    idx = text_stripped.find(self.wake_word)
+                    command_text = text.strip()[idx + len(self.wake_word):].lstrip(",. ")
+                    if command_text and self.on_speech_detected:
+                        self.on_speech_detected(command_text)
+                # Otherwise, remain in wake-word mode
+                return
+
+            # If already triggered (is_recording), pass through recognized text as command
+            if self.is_recording and self.on_speech_detected:
                 self.on_speech_detected(text.strip())
-                
+
+            # Reset is_recording to False after silence
+            # (Can be refined to use VAD/silence detection; simple reset here)
+            self.is_recording = False
+            if self.on_listening_stop:
+                self.on_listening_stop()
+
         except Exception as e:
             logger.error(f"Error processing audio buffer: {e}")
     
@@ -360,28 +403,35 @@ class VoiceEngine:
             logger.error(f"File transcription error: {e}")
             return ""
     
-    def text_to_speech(self, text: str, voice_id: str = None) -> Optional[bytes]:
+    def text_to_speech(self, text: str, voice_id: str = None, provider: str = None) -> Optional[bytes]:
         """
-        Convert text to speech using Eleven Labs.
-        
-        Args:
-            text: Text to convert
-            voice_id: Voice ID to use (optional, uses config default)
-            
-        Returns:
-            Audio data as bytes, or None if failed
+        Convert text to speech using Eleven Labs (cloud) or Piper (local).
         """
+        prov = provider or getattr(self.config, "provider", "elevenlabs")
+        if prov == "piper":
+            try:
+                if not hasattr(self, "_piper_instance"):
+                    from piper_engine import PiperVoice
+                    load_voice = voice_id or "en_US-amy-low"
+                    self._piper_instance = PiperVoice.load(load_voice)
+                wav_bytes = self._piper_instance.synthesize(text)
+                return wav_bytes
+            except Exception as e:
+                logger.error(f"Piper TTS error: {e}")
+                return None
+
+        # ElevenLabs (cloud) TTS (default)
         if not self.elevenlabs_configured or not generate:
             logger.error("Eleven Labs not configured or available")
             return None
-            
+
         voice_id = voice_id or self.config.elevenlabs_voice_id
-        
+
         # Check cache first
-        cache_key = f"{voice_id}:{hash(text)}"
+        cache_key = f"{prov}:{voice_id}:{hash(text)}"
         if cache_key in self.tts_cache:
             return self.tts_cache[cache_key]
-        
+
         try:
             audio = generate(
                 text=text,
@@ -394,22 +444,43 @@ class VoiceEngine:
                     }
                 )
             )
-            
+
             # Cache the result
             self.tts_cache[cache_key] = audio
-            
+
             # Limit cache size
             if len(self.tts_cache) > 50:
-                # Remove oldest entries
                 oldest_keys = list(self.tts_cache.keys())[:10]
                 for key in oldest_keys:
                     del self.tts_cache[key]
-            
+
             return audio
-            
+
         except Exception as e:
             logger.error(f"TTS error: {e}")
             return None
+
+    def train_voice(self, voice_id: str, audio_bytes: bytes, transcript: str, job_id: str):
+        """
+        Simulate per-language TTS training, reporting progress in self.training_jobs[job_id].
+        """
+        import threading, time
+        def _train():
+            self.training_jobs[job_id]["status"] = "in_progress"
+            self.training_jobs[job_id]["progress"] = 0
+            self.training_jobs[job_id]["voice_id"] = voice_id
+            try:
+                for p in range(1, 11):
+                    time.sleep(1)
+                    self.training_jobs[job_id]["progress"] = p * 10
+                # Simulate registering the new voice with Piper (stub)
+                # In reality, save and register the trained model here
+                self.training_jobs[job_id]["status"] = "completed"
+                self.training_jobs[job_id]["progress"] = 100
+            except Exception as e:
+                self.training_jobs[job_id]["status"] = "failed"
+                self.training_jobs[job_id]["progress"] = 0
+        threading.Thread(target=_train, daemon=True).start()
     
     def play_audio(self, audio_data: bytes):
         """

@@ -1,0 +1,27 @@
+body.terminal, .terminal-theme {
+  background: #000 !important;
+  color: #33ff33 !important;
+  font-family: "Fira Mono", "Consolas", "monospace";
+}
+
+input, textarea, select {
+  background: #111 !important;
+  color: #33ff33 !important;
+  border: 1px solid #33ff33 !important;
+}
+
+a, a:visited {
+  color: #39f369 !important;
+}
+
+.top-bar, .callout, .card, .button, .menu, .pagination {
+  background: #222 !important;
+  color: #33ff33 !important;
+  border-color: #33ff33 !important;
+}
+
+.button {
+  background: #111 !important;
+  color: #33ff33 !important;
+  border: 1.5px solid #33ff33 !important;
+}

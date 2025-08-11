@@ -1,0 +1,39 @@
+.dark-theme, body.dark-theme {
+  background: #15181b;
+  color: #e0e0e0;
+}
+
+/* Foundation dark overrides */
+.top-bar, .callout, .card, .button, .menu, .pagination, .dropdown-pane, .label, .badge {
+  background-color: #23272c !important;
+  color: #e0e0e0 !important;
+  border-color: #333842 !important;
+}
+
+.button {
+  background: #2ecc40 !important;
+  border: none;
+  color: #23272c !important;
+}
+
+input, textarea, select {
+  background: #212326;
+  color: #e0e0e0;
+  border: 1px solid #333842;
+}
+
+a, a:visited {
+  color: #5fdfff;
+}
+
+a:hover {
+  color: #2ecc40;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #23272c;
+}

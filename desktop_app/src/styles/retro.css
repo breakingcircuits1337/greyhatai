@@ -1,0 +1,27 @@
+body.retro, .retro-theme {
+  background: #15120b !important;
+  color: #ffbf36 !important;
+  font-family: "IBM Plex Mono", "monospace";
+}
+
+input, textarea, select {
+  background: #2b230e !important;
+  color: #ffbf36 !important;
+  border: 1px solid #ffbf36 !important;
+}
+
+a, a:visited {
+  color: #ffbf36 !important;
+}
+
+.top-bar, .callout, .card, .button, .menu, .pagination {
+  background: #221c0d !important;
+  color: #ffbf36 !important;
+  border-color: #ffbf36 !important;
+}
+
+.button {
+  background: #15120b !important;
+  color: #ffbf36 !important;
+  border: 1.5px solid #ffbf36 !important;
+}

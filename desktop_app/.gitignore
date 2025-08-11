@@ -1,0 +1,8 @@
+node_modules/
+dist/
+out/
+.vscode/
+.env
+.idea/
+.cache/
+electron-out/
