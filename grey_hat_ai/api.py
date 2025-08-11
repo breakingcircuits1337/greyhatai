@@ -89,7 +89,32 @@ async def config(request: ConfigRequest):
     except Exception as e:
         return {"success": False, "message": str(e)}
 
-# --- Endpoints ---
+# --- Models Endpoint ---
+
+from fastapi import Query
+
+@app.get("/models")
+async def get_models(provider: str = Query(None, description="LLM provider name")):
+    """
+    Get available models for a given provider.
+    Returns: { "models": [ ... ] }
+    """
+    try:
+        models = llm_manager.get_available_models(provider)
+    except Exception as e:
+        return {"models": [], "error": str(e)}
+    return {"models": models or []}
+
+# --- Scratchpad Clear Endpoint ---
+
+@app.post("/scratchpad/clear")
+async def clear_scratchpad():
+    """
+    Clear all entries from the agent scratchpad.
+    Returns: { "cleared": true }
+    """
+    scratchpad_store.clear()
+    return {"cleared": True}
 
 @app.get("/health")
 async def health():
