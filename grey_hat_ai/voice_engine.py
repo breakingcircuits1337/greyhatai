@@ -50,6 +50,12 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class VoiceConfig:
+    def __init__(self, api_key=None, voice_id=None, model=None, provider="elevenlabs"):
+        self.api_key = api_key
+        self.voice_id = voice_id
+        self.model = model
+        # provider: "elevenlabs" (default), "piper"
+        self.provider = provider
     """Configuration for voice engine."""
     # STT Configuration
     whisper_model_size: str = "base"  # tiny, base, small, medium, large
@@ -69,6 +75,11 @@ class VoiceConfig:
 
 
 class VoiceEngine:
+    def __init__(self, config: VoiceConfig):
+        self.config = config
+        # ... other init ...
+        # Piper setup (lazy import/instantiation)
+        self._piper = None
     """
     Voice engine providing STT and TTS capabilities.
     
@@ -360,17 +371,34 @@ class VoiceEngine:
             logger.error(f"File transcription error: {e}")
             return ""
     
-    def text_to_speech(self, text: str, voice_id: str = None) -> Optional[bytes]:
+    def text_to_speech(self, text: str, voice_id: str = None, provider: str = None) -> Optional[bytes]:
         """
-        Convert text to speech using Eleven Labs.
+        Convert text to speech using Eleven Labs (cloud) or Piper (local).
         
         Args:
             text: Text to convert
             voice_id: Voice ID to use (optional, uses config default)
+            provider: 'elevenlabs' (cloud, default) or 'piper' (local)
             
         Returns:
             Audio data as bytes, or None if failed
         """
+        prov = provider or getattr(self.config, "provider", "elevenlabs")
+        if prov == "piper":
+            # Local Piper TTS
+            try:
+                if not hasattr(self, "_piper_instance"):
+                    from piper_engine import PiperVoice
+                    # Use provided voice_id or a safe default
+                    load_voice = voice_id or "en_US-amy-low"
+                    self._piper_instance = PiperVoice.load(load_voice)
+                wav_bytes = self._piper_instance.synthesize(text)
+                return wav_bytes
+            except Exception as e:
+                logger.error(f"Piper TTS error: {e}")
+                return None
+
+        # ElevenLabs (cloud) TTS (default)
         if not self.elevenlabs_configured or not generate:
             logger.error("Eleven Labs not configured or available")
             return None
@@ -378,7 +406,7 @@ class VoiceEngine:
         voice_id = voice_id or self.config.elevenlabs_voice_id
         
         # Check cache first
-        cache_key = f"{voice_id}:{hash(text)}"
+        cache_key = f"{prov}:{voice_id}:{hash(text)}"
         if cache_key in self.tts_cache:
             return self.tts_cache[cache_key]
         

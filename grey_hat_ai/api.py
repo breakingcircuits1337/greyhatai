@@ -141,14 +141,16 @@ from pydantic import BaseModel
 class TTSRequest(BaseModel):
     text: str
     voice_id: str = None
+    provider: str = None  # "elevenlabs" or "piper"
 
 @app.post("/voice/tts")
 async def voice_tts(req: TTSRequest):
     """
     Text-to-speech endpoint. Returns audio/wav stream.
+    Optional: provider ("elevenlabs" or "piper")
     """
     try:
-        audio_bytes = voice_engine.text_to_speech(req.text, req.voice_id)
+        audio_bytes = voice_engine.text_to_speech(req.text, req.voice_id, req.provider)
         return StreamingResponse(
             iter([audio_bytes]),
             media_type="audio/wav",

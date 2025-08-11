@@ -1,9 +1,15 @@
 import React, { useEffect, useState, useRef } from "react";
 import { getVoices, textToSpeech } from "../service/api";
 
+const PROVIDERS = [
+  { value: "elevenlabs", label: "ElevenLabs (cloud)" },
+  { value: "piper", label: "Piper (local/free)" }
+];
+
 export default function VoiceSettings() {
   const [voices, setVoices] = useState({});
   const [voiceId, setVoiceId] = useState("");
+  const [provider, setProvider] = useState("elevenlabs");
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
   const [audioUrl, setAudioUrl] = useState("");
@@ -16,7 +22,6 @@ export default function VoiceSettings() {
       try {
         const res = await getVoices();
         setVoices(res.voices || {});
-        // Set default voice
         const ids = Object.keys(res.voices || {});
         if (ids.length > 0) setVoiceId(ids[0]);
       } catch (err) {
@@ -32,10 +37,9 @@ export default function VoiceSettings() {
     setError("");
     setAudioUrl("");
     try {
-      const blob = await textToSpeech(text, voiceId);
+      const blob = await textToSpeech(text, voiceId, provider);
       const url = URL.createObjectURL(blob);
       setAudioUrl(url);
-      // Play automatically
       setTimeout(() => {
         if (audioRef.current) audioRef.current.play();
       }, 50);
@@ -50,6 +54,20 @@ export default function VoiceSettings() {
       <div className="callout warning">
         <h2>🎤 Voice Settings</h2>
         <form className="grid-y" style={{ gap: 16 }} onSubmit={handleSpeak}>
+          <label>
+            Provider
+            <select
+              value={provider}
+              onChange={e => setProvider(e.target.value)}
+              disabled={loading}
+              className="dark-theme"
+              style={{ marginBottom: 8 }}
+            >
+              {PROVIDERS.map(p => (
+                <option key={p.value} value={p.value}>{p.label}</option>
+              ))}
+            </select>
+          </label>
           <label>
             Voice
             <select
@@ -98,6 +116,9 @@ export default function VoiceSettings() {
             {error}
           </div>
         )}
+        <div className="subheader" style={{ marginTop: 12, color: "#aaa" }}>
+          <strong>Note:</strong> Piper runs 100% locally (no cloud) and is free/open-source, but voices may be less natural than ElevenLabs.
+        </div>
       </div>
     </div>
   );

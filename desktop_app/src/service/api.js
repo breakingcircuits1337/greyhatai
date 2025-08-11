@@ -61,11 +61,11 @@ export async function getVoices() {
 }
 
 // textToSpeech: returns a Blob (audio/wav)
-export async function textToSpeech(text, voiceId) {
+export async function textToSpeech(text, voiceId, provider) {
   const res = await fetch(`${BASE}/voice/tts`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text, voice_id: voiceId }),
+    body: JSON.stringify({ text, voice_id: voiceId, provider }),
   });
   if (!res.ok) {
     // try to parse error
