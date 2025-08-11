@@ -5,6 +5,8 @@ import Chat from './pages/Chat';
 import Scratchpad from './pages/Scratchpad';
 import VoiceSettings from './pages/VoiceSettings';
 import AutoTestReport from './pages/AutoTestReport';
+import TerminalPage from './pages/Terminal';
+import FileExplorer from './pages/FileExplorer';
 import { ThemeProvider, useTheme } from './ThemeContext';
 import MatrixBackground from './components/MatrixBackground';
 
@@ -48,6 +50,8 @@ function TopBar() {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span style={{ fontWeight: "bold", fontSize: 22, letterSpacing: 1 }}>Grey Hat AI</span>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <a href="/terminal" style={{ color: "#2ecc40", textDecoration: "none", marginRight: 10, fontWeight: 500 }}>Terminal</a>
+          <a href="/explorer" style={{ color: "#39f369", textDecoration: "none", marginRight: 16, fontWeight: 500 }}>Files</a>
           <span
             aria-label={recording ? "Voice recording" : "Idle"}
             style={{
@@ -98,6 +102,8 @@ function AppWrapper() {
           <Route path="/scratchpad" element={<Scratchpad />} />
           <Route path="/voice-settings" element={<VoiceSettings />} />
           <Route path="/auto-test-report" element={<AutoTestReport />} />
+          <Route path="/terminal" element={<TerminalPage />} />
+          <Route path="/explorer" element={<FileExplorer />} />
         </Routes>
       </BrowserRouter>
     </>

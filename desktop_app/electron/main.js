@@ -1,23 +1,101 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
+const fs = require('fs');
+const os = require('os');
+
+// Terminal support
+const pty = require('node-pty');
 
 let fastapiProcess = null;
+let ptyProcess = null;
 
 function createWindow () {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
-    backgroundColor: '#15181b', // dark background
+    backgroundColor: '#15181b',
     webPreferences: {
       nodeIntegration: false,
-      contextIsolation: true
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js')
     }
   });
-
-  // Load the React front-end (vite dev server)
   win.loadURL('http://localhost:3000');
 }
+
+// PTY and FS IPC
+ipcMain.handle('pty:exec', (event, cmd) => {
+  if (ptyProcess) {
+    ptyProcess.kill();
+    ptyProcess = null;
+  }
+  ptyProcess = pty.spawn(os.platform() === 'win32' ? 'cmd.exe' : 'bash', [], {
+    name: 'xterm-color',
+    cols: 80,
+    rows: 30,
+    cwd: process.cwd(),
+    env: process.env
+  });
+  ptyProcess.write(cmd + '\r');
+  ptyProcess.onData(data => {
+    event.sender.send('pty:data', data);
+  });
+  return true;
+});
+ipcMain.on('pty:input', (event, input) => {
+  if (ptyProcess) ptyProcess.write(input);
+});
+ipcMain.handle('fs:list', async (event, dir) => {
+  try {
+    const files = await fs.promises.readdir(dir, { withFileTypes: true });
+    return files.map(f => ({
+      name: f.name,
+      isDir: f.isDirectory(),
+      isFile: f.isFile()
+    }));
+  } catch (e) {
+    return [];
+  }
+});
+
+function startFastAPIServer() {
+  const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+  fastapiProcess = spawn(
+    pythonCmd,
+    [
+      '-m', 'uvicorn',
+      'grey_hat_ai.api:app',
+      '--host', 'localhost',
+      '--port', '8000'
+    ],
+    {
+      stdio: 'inherit',
+      shell: true
+    }
+  );
+
+  fastapiProcess.on('close', (code) => {
+    console.log(`FastAPI server exited with code ${code}`);
+  });
+}
+
+app.whenReady().then(() => {
+  startFastAPIServer();
+  createWindow();
+
+  app.on('activate', function () {
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  });
+});
+
+app.on('window-all-closed', function () {
+  if (process.platform !== 'darwin') {
+    if (fastapiProcess) fastapiProcess.kill();
+    if (ptyProcess) ptyProcess.kill();
+    app.quit();
+  }
+});
 
 function startFastAPIServer() {
   // Use Python executable from system env (assume uvicorn installed in venv)
