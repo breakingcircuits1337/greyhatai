@@ -7,5 +7,7 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.on('pty:data', (event, data) => cb(data));
   },
   send: (input) => ipcRenderer.send('pty:input', input),
-  list: (dir) => ipcRenderer.invoke('fs:list', dir)
+  list: (dir) => ipcRenderer.invoke('fs:list', dir),
+  readFile: (path) => ipcRenderer.invoke('fs:readFile', path),
+  openPath: (path) => ipcRenderer.invoke('shell:openPath', path)
 });

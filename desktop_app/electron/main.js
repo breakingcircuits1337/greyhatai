@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 const fs = require('fs');
@@ -52,10 +52,39 @@ ipcMain.handle('fs:list', async (event, dir) => {
     return files.map(f => ({
       name: f.name,
       isDir: f.isDirectory(),
-      isFile: f.isFile()
+      isFile: f.isFile(),
+      path: path.join(dir, f.name)
     }));
   } catch (e) {
     return [];
+  }
+});
+
+// Read a file for preview (text or image, small files only)
+ipcMain.handle('fs:readFile', async (event, filePath) => {
+  try {
+    // Guess type by extension for images
+    const ext = (filePath.split('.').pop() || '').toLowerCase();
+    if (['png', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'webp'].includes(ext)) {
+      const buf = await fs.promises.readFile(filePath);
+      const mime = ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+      return { dataUrl: `data:${mime};base64,${buf.toString('base64')}` };
+    } else {
+      const text = await fs.promises.readFile(filePath, 'utf8');
+      return { text };
+    }
+  } catch (e) {
+    return { error: e.message };
+  }
+});
+
+// Open a file or dir in system default app
+ipcMain.handle('shell:openPath', async (event, filePath) => {
+  try {
+    await shell.openPath(filePath);
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
   }
 });
 
