@@ -8,10 +8,12 @@ import threading
 try:
     from .llm_manager import LLMManager
     from .autonomous_web_agent import GreyHatAI
+    from .llm_manager import LLMResponse
 except ImportError:
     # fallback for direct runs
     from llm_manager import LLMManager
     from autonomous_web_agent import GreyHatAI
+    from llm_manager import LLMResponse
 
 app = FastAPI()
 
@@ -69,36 +71,46 @@ class AutoTestResponse(BaseModel):
 async def health():
     return {"status": "ok"}
 
+# --- Type hints for generate_response ---
+import typing
+
+def generate_response(
+    self,
+    message: str,
+    context: typing.List[dict]
+) -> "LLMResponse":
+    ...
+# (Note: This is a stub; make sure LLMManager has the proper type hints in the real code.)
+
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     # Call LLMManager's generate_response and log to scratchpad
-    resp = llm_manager.generate_response(request.message)
-    # Assume resp is a dict: { "content": ..., "provider": ..., "model": ... }
+    response = llm_manager.generate_response(request.message, [])
+    # response is an LLMResponse object with attributes content, provider, model
     scratchpad_store.append({
         "role": "user",
         "content": request.message
     })
     scratchpad_store.append({
         "role": "assistant",
-        "content": resp.get("content", ""),
-        "provider": resp.get("provider", ""),
-        "model": resp.get("model", "")
+        "content": getattr(response, "content", ""),
+        "provider": getattr(response, "provider", ""),
+        "model": getattr(response, "model", "")
     })
     return {
-        "content": resp.get("content", ""),
-        "provider": resp.get("provider", ""),
-        "model": resp.get("model", "")
+        "content": getattr(response, "content", ""),
+        "provider": getattr(response, "provider", ""),
+        "model": getattr(response, "model", "")
     }
 
 @app.get("/scratchpad")
 async def scratchpad():
     # Returns the entire persisted scratchpad (list of exchanges)
+    # Each entry is a dict: {role, content, provider?, model?}
     return {"scratchpad": scratchpad_store.get()}
 
 @app.post("/auto-test", response_model=AutoTestResponse)
 async def auto_test(request: AutoTestRequest):
-    # Enqueue auto-test using the GreyHatAI logic
-    # Assumes GreyHatAI has a method _start_auto_test or similar
-    # You may want to refactor this to a public method in GreyHatAI
-    grey_hat_ai._start_auto_test(request.target)
+    # Spawn the auto-test in a background thread
+    threading.Thread(target=grey_hat_ai._start_auto_test, args=(request.target,), daemon=True).start()
     return {"queued": True}
