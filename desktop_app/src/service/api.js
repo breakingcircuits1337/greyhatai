@@ -71,6 +71,36 @@ export async function getTrainingStatus(jobId) {
   return await res.json();
 }
 
+// --- Session management API ---
+
+export async function saveSession(name) {
+  let res = await fetch(`${BASE}/session/save`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name })
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return await res.json();
+}
+
+export async function listSessions() {
+  let res = await fetch(`${BASE}/session/list`);
+  if (!res.ok) throw new Error(await res.text());
+  return await res.json();
+}
+
+export async function loadSession(name) {
+  let res = await fetch(`${BASE}/session/load?name=${encodeURIComponent(name)}`);
+  if (!res.ok) throw new Error(await res.text());
+  return await res.json();
+}
+
+export async function deleteSession(name) {
+  let res = await fetch(`${BASE}/session/delete?name=${encodeURIComponent(name)}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(await res.text());
+  return await res.json();
+}
+
 // --- VOICE API ---
 
 export async function getVoices() {

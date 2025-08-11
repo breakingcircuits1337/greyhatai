@@ -126,6 +126,7 @@ async def clear_scratchpad():
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi import status, BackgroundTasks, UploadFile, File, Form, Query
 import uuid
+import copy
 
 @app.get("/voice/voices")
 async def get_voices():
@@ -170,6 +171,52 @@ async def voice_train(
     # Spawn training in background
     voice_engine.train_voice(voice_id, audio_bytes, transcript, job_id)
     return {"job_id": job_id}
+
+# --- Session Management Endpoints ---
+
+from fastapi import Body
+
+@app.post("/session/save")
+async def session_save(data: dict = Body(...)):
+    """
+    Save current session under given name.
+    """
+    name = data.get("name")
+    if not name:
+        return JSONResponse({"error": "Missing name"}, status_code=400)
+    # Store deep copies of current session state
+    sessions[name] = {
+        "chat": copy.deepcopy(scratchpad_store.get()),
+        "scratchpad": copy.deepcopy(scratchpad_store.get()),
+        "reports": copy.deepcopy(auto_test_reports),
+    }
+    return {"success": True}
+
+@app.get("/session/list")
+async def session_list():
+    """
+    List saved session names.
+    """
+    return {"sessions": list(sessions.keys())}
+
+@app.get("/session/load")
+async def session_load(name: str):
+    """
+    Load session data.
+    """
+    if name not in sessions:
+        return JSONResponse({"error": "Not found"}, status_code=404)
+    return sessions[name]
+
+@app.delete("/session/delete")
+async def session_delete(name: str):
+    """
+    Delete a session.
+    """
+    if name in sessions:
+        del sessions[name]
+        return {"success": True}
+    return JSONResponse({"error": "Not found"}, status_code=404)
 
 @app.get("/voice/train/status")
 async def voice_train_status(job_id: str = Query(...)):
@@ -257,6 +304,9 @@ async def scratchpad():
 # --- In-memory auto-test report store ---
 auto_test_reports = {}  # target -> report data (dict)
 auto_test_locks = {}    # target -> threading.Lock
+
+# --- In-memory session store ---
+sessions = {}  # name -> { chat, scratchpad, reports }
 
 def run_auto_test_and_store(target):
     # Run the real workflow and store the resulting report
