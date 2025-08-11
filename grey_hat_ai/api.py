@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Any
 import threading
+import time
+from fastapi import HTTPException
 
 # Placeholder imports: adjust if modules/classes are in submodules
 try:
@@ -209,8 +211,76 @@ async def scratchpad():
     # Each entry is a dict: {role, content, provider?, model?}
     return {"scratchpad": scratchpad_store.get()}
 
+# --- In-memory auto-test report store ---
+auto_test_reports = {}  # target -> report data (dict)
+auto_test_locks = {}    # target -> threading.Lock
+
+def _generate_sample_report(target):
+    # In real usage, call grey_hat_ai._start_auto_test(target) and parse results
+    # Here, simulate with a dummy structure and a mermaid diagram
+    return {
+        "target": target,
+        "summary": "Automated security assessment completed.",
+        "reconnaissance": {
+            "diagram": f"""
+graph TD
+    A[User Machine] -->|Scan| B({target})
+    B --> C[Web Server]
+    B --> D[SSH Service]
+    C --> E[Vulnerability: XSS]
+    D --> F[Vulnerability: Weak SSH Key]
+""",
+            "findings": [
+                "Open ports: 22, 80, 443",
+                "Detected web server: nginx 1.18",
+                "SSH service running",
+            ]
+        },
+        "vulnerabilities": [
+            {"id": "CVE-2023-1234", "desc": "Remote code execution in nginx", "severity": "high"},
+            {"id": "MISCONFIG-SSH", "desc": "Weak SSH key detected", "severity": "medium"}
+        ],
+        "exploitation": {
+            "plan": [
+                "Exploit XSS on web server to gain session cookie",
+                "Use weak SSH key for lateral movement"
+            ]
+        }
+    }
+
+def run_auto_test_and_store(target):
+    # Simulate a long-running test
+    time.sleep(4)  # Emulate test duration
+    report = _generate_sample_report(target)
+    auto_test_reports[target] = report
+
 @app.post("/auto-test", response_model=AutoTestResponse)
 async def auto_test(request: AutoTestRequest):
-    # Spawn the auto-test in a background thread
-    threading.Thread(target=grey_hat_ai._start_auto_test, args=(request.target,), daemon=True).start()
+    """
+    Start an auto-test for the given target. Returns queued=True immediately,
+    and the result will be available via /auto-test/results?target=
+    """
+    target = request.target
+    # Avoid parallel runs for same target
+    if target in auto_test_locks:
+        raise HTTPException(status_code=409, detail="Test already running for this target")
+    lock = threading.Lock()
+    auto_test_locks[target] = lock
+    def worker():
+        try:
+            run_auto_test_and_store(target)
+        finally:
+            # Clean up lock after done
+            auto_test_locks.pop(target, None)
+    threading.Thread(target=worker, daemon=True).start()
     return {"queued": True}
+
+@app.get("/auto-test/results")
+async def get_auto_test_results(target: str):
+    """
+    Fetch the most recent auto-test report for a given target.
+    """
+    report = auto_test_reports.get(target)
+    if not report:
+        raise HTTPException(status_code=404, detail="No report available for this target")
+    return {"report": report}
