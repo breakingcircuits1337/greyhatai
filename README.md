@@ -80,22 +80,32 @@ The installer will:
 
 If you prefer manual installation:
 
-1. **Install system dependencies**:
+1. **Unzip the CAI framework**:
+   ```bash
+   mkdir -p src
+   unzip cai.zip -d src/
+   ```
+   This should result in a directory like `src/cai/`.
+
+2. **Install system dependencies**:
    ```bash
    sudo apt update
    sudo apt install -y python3-pip python3-venv python3-dev build-essential \
                        portaudio19-dev libasound2-dev libsndfile1-dev ffmpeg
    ```
 
-2. **Create virtual environment**:
+3. **Create virtual environment**:
    ```bash
    python3 -m venv ~/grey_hat_ai_venv
    source ~/grey_hat_ai_venv/bin/activate
    ```
 
-3. **Install Python dependencies**:
+4. **Install Python dependencies and CAI framework**:
    ```bash
    pip install -e .
+   pip install -e src/cai
+   # Alternatively, you may add src to PYTHONPATH if not installing as editable:
+   # export PYTHONPATH="$(pwd)/src:$PYTHONPATH"
    ```
 
 4. **Install Playwright browsers**:

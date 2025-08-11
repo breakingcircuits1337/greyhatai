@@ -17,6 +17,9 @@ pip install --upgrade pip
 # Suppress webrtcvad pkg_resources deprecation warning
 export PYTHONWARNINGS="ignore::UserWarning:webrtcvad"
 
+# Ensure CAI is importable: add src/ to PYTHONPATH
+export PYTHONPATH="$(pwd)/src:$PYTHONPATH"
+
 # Run Streamlit using the venv's binary
 "$VENV/bin/streamlit" run grey_hat_ai/app.py --server.port 8501
 
