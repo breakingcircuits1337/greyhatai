@@ -108,6 +108,88 @@ If you prefer manual installation:
    ```bash
    streamlit run grey_hat_ai/app.py
    ```
+🖥️ Desktop App (Electron) Quick Start
+
+    Install Node.js & Yarn:
+
+    bash
+
+# Debian/Ubuntu
+sudo apt update
+sudo apt install -y nodejs npm
+npm install -g yarn
+
+From the project root, install dependencies and start the dev environment:
+
+bash
+
+cd desktop_app
+yarn install
+yarn start
+
+    This runs the Vite React front-end at http://localhost:3000
+    Electron will auto-launch and connect to the React UI.
+    A FastAPI backend is spawned automatically on localhost:8000.
+
+To build distributables:
+
+bash
+
+    yarn build
+    yarn make
+
+        Generates platform-specific installers (Windows .exe, macOS .dmg, Linux AppImage) under out/.
+
+🚀 Desktop App Usage
+
+Once launched, you’ll find these main modules in the sidebar or top bar:
+
+    Chat
+        Full-featured AI chat with multi-provider/model dropdowns
+        Drag-and-resize panels; layouts persist between sessions
+
+    Scratchpad
+        Live agent reasoning log with clear button
+        Resizable via drag-and-drop
+
+    Voice Settings
+        Choose between cloud (ElevenLabs) or local/free (Piper) TTS
+        Push-to-talk hotkey (Ctrl+Shift+G) & voice-activated “Hey Grey Hat” wake-word
+        Train custom voices by uploading sample audio + transcript
+        See and select available STT/TTS providers
+
+    Auto-Test Report
+        Orchestrated pen-test runs with live polling
+        Interactive accordion report with Mermaid network diagrams
+
+    Terminal
+        Fully embedded xterm.js terminal running in a real PTY
+        Run native Kali commands, view output inline
+
+    Files
+        Two-pane file explorer with lazy-loaded directory tree
+        Right-click context menu: Preview (text/images) and Open in default app
+
+    Sessions
+        Save/load multiple “projects” (chat + scratchpad + test results) by name
+        Export sessions as shareable JSON
+
+Theming & Layout
+
+    Switch between Dark Hacker, Terminal, Matrix, and Retro skins via the theme selector in the top bar.
+    Panels in Chat and Scratchpad can be dragged, resized, and their positions persist across restarts.
+
+Exporting & Collaboration
+
+    Export JSON: In Sessions, click “Export as JSON” to download a snapshot of your entire workspace.
+    Share: Distribute your session file to colleagues—import via “Load” in the Sessions pane.
+
+Advanced Tips
+
+    Global Hotkey: Hold Ctrl+Shift+G to speak commands anywhere in the app.
+    Wake-Word: Say “Hey Grey Hat” to trigger voice capture without hotkeys.
+    File System: Preview code snippets, logs, and images without leaving the app.
+
 
 ## 🚀 Usage
 
