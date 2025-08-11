@@ -17,8 +17,23 @@ pip install --upgrade pip
 # Suppress webrtcvad pkg_resources deprecation warning
 export PYTHONWARNINGS="ignore::UserWarning:webrtcvad"
 
-# Ensure CAI is importable: add src/ to PYTHONPATH
-export PYTHONPATH="$(pwd)/src:$PYTHONPATH"
+# Ensure CAI is importable: if src/cai does not exist, extract cai.zip
+if [ ! -d "src/cai" ]; then
+  echo "CAI package not found in src/cai. Attempting to extract cai.zip..."
+  mkdir -p src
+  if ! unzip -o cai.zip -d src/; then
+    echo "ERROR: Failed to unzip cai.zip into src/. Please ensure cai.zip is present and valid."
+    exit 1
+  fi
+  # Double-check extraction
+  if [ ! -d "src/cai" ]; then
+    echo "ERROR: cai.zip did not contain a 'cai' directory at its root."
+    exit 1
+  fi
+fi
+
+# Add src/ and src/cai to PYTHONPATH
+export PYTHONPATH="$(pwd)/src:$(pwd)/src/cai:$PYTHONPATH"
 
 ARGS=()
 has_port=false
