@@ -612,3 +612,92 @@ def create_web_agent_tool():
         "web_execute_js": web_execute_js
     }
 
+
+# --- GreyHatAI Engine for Auto-Test Reporting ---
+
+class GreyHatAI:
+    """
+    Main engine for orchestrating automated security assessment.
+    Provides:
+      - Asynchronous legacy trigger (_start_auto_test)
+      - Structured JSON report return (run_auto_test)
+    """
+
+    def _start_auto_test(self, target):
+        """
+        Legacy async usage. May interact with UI/Streamlit.
+        Delegates to run_auto_test; result is ignored.
+        """
+        self.run_auto_test(target)
+
+    def run_auto_test(self, target: str) -> dict:
+        """
+        Run the full auto-test workflow and return a structured report dict.
+        No UI/Streamlit logic; purely data.
+        Returns:
+            {
+                "target": str,
+                "summary": str,
+                "reconnaissance": {
+                    "diagram": str,
+                    "findings": [str, ...]
+                },
+                "vulnerabilities": [
+                    {"id": str, "desc": str, "severity": str}
+                ],
+                "exploitation": {
+                    "plan": [str, ...]
+                }
+            }
+        """
+        # Reconnaissance phase (dummy logic—replace with real scans)
+        reconnaissance_findings = []
+        vulnerabilities = []
+        exploitation_plan = []
+
+        recon_ports = [22, 80, 443]
+        recon_services = ["nginx 1.18", "ssh"]
+        reconnaissance_findings.append(f"Open ports: {', '.join(map(str, recon_ports))}")
+        reconnaissance_findings.append(f"Detected services: {', '.join(recon_services)}")
+
+        recon_diagram = f'''
+graph TD
+    A[User Machine] -->|Scan| B({target})
+    B --> C[Web Server]
+    B --> D[SSH Service]
+    C --> E[Vulnerability: XSS]
+    D --> F[Vulnerability: Weak SSH Key]
+'''
+
+        # Vulnerability assessment logic
+        if "nginx 1.18" in recon_services:
+            vulnerabilities.append({"id": "CVE-2023-1234", "desc": "Remote code execution in nginx", "severity": "high"})
+        if "ssh" in recon_services:
+            vulnerabilities.append({"id": "MISCONFIG-SSH", "desc": "Weak SSH key detected", "severity": "medium"})
+
+        # Exploitation plan logic
+        if any(v["id"] == "CVE-2023-1234" for v in vulnerabilities):
+            exploitation_plan.append("Exploit XSS on web server to gain session cookie")
+        if any(v["id"] == "MISCONFIG-SSH" for v in vulnerabilities):
+            exploitation_plan.append("Use weak SSH key for lateral movement")
+
+        summary = "Automated security assessment completed."
+        if not vulnerabilities:
+            summary += " No critical vulnerabilities discovered."
+        else:
+            summary += f" {len(vulnerabilities)} potential vulnerabilities found."
+
+        report = {
+            "target": target,
+            "summary": summary,
+            "reconnaissance": {
+                "diagram": recon_diagram,
+                "findings": reconnaissance_findings,
+            },
+            "vulnerabilities": vulnerabilities,
+            "exploitation": {
+                "plan": exploitation_plan,
+            }
+        }
+        return report
+

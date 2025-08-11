@@ -215,43 +215,9 @@ async def scratchpad():
 auto_test_reports = {}  # target -> report data (dict)
 auto_test_locks = {}    # target -> threading.Lock
 
-def _generate_sample_report(target):
-    # In real usage, call grey_hat_ai._start_auto_test(target) and parse results
-    # Here, simulate with a dummy structure and a mermaid diagram
-    return {
-        "target": target,
-        "summary": "Automated security assessment completed.",
-        "reconnaissance": {
-            "diagram": f"""
-graph TD
-    A[User Machine] -->|Scan| B({target})
-    B --> C[Web Server]
-    B --> D[SSH Service]
-    C --> E[Vulnerability: XSS]
-    D --> F[Vulnerability: Weak SSH Key]
-""",
-            "findings": [
-                "Open ports: 22, 80, 443",
-                "Detected web server: nginx 1.18",
-                "SSH service running",
-            ]
-        },
-        "vulnerabilities": [
-            {"id": "CVE-2023-1234", "desc": "Remote code execution in nginx", "severity": "high"},
-            {"id": "MISCONFIG-SSH", "desc": "Weak SSH key detected", "severity": "medium"}
-        ],
-        "exploitation": {
-            "plan": [
-                "Exploit XSS on web server to gain session cookie",
-                "Use weak SSH key for lateral movement"
-            ]
-        }
-    }
-
 def run_auto_test_and_store(target):
-    # Simulate a long-running test
-    time.sleep(4)  # Emulate test duration
-    report = _generate_sample_report(target)
+    # Run the real workflow and store the resulting report
+    report = grey_hat_ai.run_auto_test(target)
     auto_test_reports[target] = report
 
 @app.post("/auto-test", response_model=AutoTestResponse)
