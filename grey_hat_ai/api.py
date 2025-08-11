@@ -124,7 +124,7 @@ async def clear_scratchpad():
 # --- Voice Endpoints ---
 
 from fastapi.responses import StreamingResponse, JSONResponse
-from fastapi import status
+from fastapi import status, BackgroundTasks
 
 @app.get("/voice/voices")
 async def get_voices():
@@ -137,6 +137,22 @@ async def get_voices():
         return {"voices": voices}
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.post("/voice/start")
+async def voice_start():
+    """
+    Start always-on wake-word listening mode.
+    """
+    voice_engine.start_wake_listen()
+    return {"status": "listening"}
+
+@app.post("/voice/stop")
+async def voice_stop():
+    """
+    Stop all listening.
+    """
+    voice_engine.stop_listening()
+    return {"status": "stopped"}
 
 from pydantic import BaseModel
 
