@@ -9,11 +9,13 @@ try:
     from .llm_manager import LLMManager
     from .autonomous_web_agent import GreyHatAI
     from .llm_manager import LLMResponse
+    from .voice_engine import VoiceEngine, VoiceConfig
 except ImportError:
     # fallback for direct runs
     from llm_manager import LLMManager
     from autonomous_web_agent import GreyHatAI
     from llm_manager import LLMResponse
+    from voice_engine import VoiceEngine, VoiceConfig
 
 app = FastAPI()
 
@@ -49,6 +51,7 @@ scratchpad_store = ScratchpadStore()
 # Initialize core components
 llm_manager = LLMManager()
 grey_hat_ai = GreyHatAI()
+voice_engine = VoiceEngine(VoiceConfig())
 
 # --- Models ---
 class ChatRequest(BaseModel):
@@ -115,6 +118,44 @@ async def clear_scratchpad():
     """
     scratchpad_store.clear()
     return {"cleared": True}
+
+# --- Voice Endpoints ---
+
+from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi import status
+
+@app.get("/voice/voices")
+async def get_voices():
+    """
+    Get available voices.
+    Returns: { "voices": { voice_id: name, ... } }
+    """
+    try:
+        voices = voice_engine.get_available_voices()
+        return {"voices": voices}
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+from pydantic import BaseModel
+
+class TTSRequest(BaseModel):
+    text: str
+    voice_id: str = None
+
+@app.post("/voice/tts")
+async def voice_tts(req: TTSRequest):
+    """
+    Text-to-speech endpoint. Returns audio/wav stream.
+    """
+    try:
+        audio_bytes = voice_engine.text_to_speech(req.text, req.voice_id)
+        return StreamingResponse(
+            iter([audio_bytes]),
+            media_type="audio/wav",
+            headers={"Content-Disposition": "inline; filename=output.wav"}
+        )
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=status.HTTP_400_BAD_REQUEST)
 
 @app.get("/health")
 async def health():
