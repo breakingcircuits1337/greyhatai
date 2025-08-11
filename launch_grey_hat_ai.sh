@@ -14,6 +14,9 @@ source "$VENV/bin/activate"
 # Upgrade pip in the venv
 pip install --upgrade pip
 
+# Suppress webrtcvad pkg_resources deprecation warning
+export PYTHONWARNINGS="ignore::UserWarning:webrtcvad"
+
 # Run Streamlit using the venv's binary
 "$VENV/bin/streamlit" run grey_hat_ai/app.py --server.port 8501
 
