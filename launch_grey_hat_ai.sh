@@ -25,15 +25,30 @@ if [ ! -d "src/cai" ]; then
     echo "ERROR: Failed to unzip cai.zip into src/. Please ensure cai.zip is present and valid."
     exit 1
   fi
-  # Double-check extraction
-  if [ ! -d "src/cai" ]; then
-    echo "ERROR: cai.zip did not contain a 'cai' directory at its root."
+fi
+
+# Locate the actual cai package directory inside src/
+candidate=$(find src -maxdepth 2 -type d -name cai | head -n 1)
+
+if [ -n "$candidate" ]; then
+  cai_parent=$(dirname "$candidate")
+  echo "Detected CAI package at: $candidate"
+  echo "Adding $cai_parent to PYTHONPATH"
+  export PYTHONPATH="$(pwd)/src:$PWD/$cai_parent:$PYTHONPATH"
+  # Optionally create symlink at src/cai for stability
+  if [ "$candidate" != "src/cai" ] && [ ! -L "src/cai" ]; then
+    ln -sf "$(realpath "$candidate")" src/cai
+    echo "Created symlink: src/cai -> $candidate"
+  fi
+else
+  if [ -f "cai.zip" ]; then
+    echo "WARNING: CAI package directory not found after unzip. Falling back to importing from cai.zip."
+    export PYTHONPATH="$(pwd)/src:$(pwd)/cai.zip:$PYTHONPATH"
+  else
+    echo "ERROR: CAI package not found and cai.zip missing. Cannot continue."
     exit 1
   fi
 fi
-
-# Add src/ and src/cai to PYTHONPATH
-export PYTHONPATH="$(pwd)/src:$(pwd)/src/cai:$PYTHONPATH"
 
 ARGS=()
 has_port=false
