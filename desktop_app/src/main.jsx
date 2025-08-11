@@ -6,6 +6,7 @@ import Scratchpad from './pages/Scratchpad';
 import VoiceSettings from './pages/VoiceSettings';
 import AutoTestReport from './pages/AutoTestReport';
 import { ThemeProvider, useTheme } from './ThemeContext';
+import MatrixBackground from './components/MatrixBackground';
 
 function TopBar() {
   const { theme, setTheme, themes } = useTheme();
@@ -31,9 +32,11 @@ function TopBar() {
   );
 }
 
-function App() {
+function AppWrapper() {
+  const { theme } = useTheme();
   return (
-    <ThemeProvider>
+    <>
+      {theme === "matrix" && <MatrixBackground />}
       <TopBar />
       <BrowserRouter>
         <Routes>
@@ -44,6 +47,14 @@ function App() {
           <Route path="/auto-test-report" element={<AutoTestReport />} />
         </Routes>
       </BrowserRouter>
+    </>
+  );
+}
+
+function App() {
+  return (
+    <ThemeProvider>
+      <AppWrapper />
     </ThemeProvider>
   );
 }

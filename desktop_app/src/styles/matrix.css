@@ -27,8 +27,11 @@ a, a:visited {
   width: 100vw;
   height: 100vh;
   position: fixed;
-  left: 0; top: 0; pointer-events: none; z-index: 0;
+  left: 0; top: 0;
+  pointer-events: none;
+  z-index: 0;
   background: transparent;
+  display: block;
 }
 @keyframes matrix-fall {
   0% { opacity: 0; transform: translateY(-100%); }
