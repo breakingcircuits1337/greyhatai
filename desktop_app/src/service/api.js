@@ -51,3 +51,28 @@ export async function setConfig(provider, apiKey) {
   if (!res.ok) throw new Error(await res.text());
   return await res.json();
 }
+
+// --- VOICE API ---
+
+export async function getVoices() {
+  const res = await fetch(`${BASE}/voice/voices`);
+  if (!res.ok) throw new Error(await res.text());
+  return await res.json();
+}
+
+// textToSpeech: returns a Blob (audio/wav)
+export async function textToSpeech(text, voiceId) {
+  const res = await fetch(`${BASE}/voice/tts`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text, voice_id: voiceId }),
+  });
+  if (!res.ok) {
+    // try to parse error
+    let msg = "TTS failed";
+    try { msg = (await res.json()).error; } catch {}
+    throw new Error(msg);
+  }
+  const blob = await res.blob();
+  return blob;
+}
