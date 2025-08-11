@@ -22,6 +22,7 @@ export PYTHONPATH="$(pwd)/src:$PYTHONPATH"
 
 ARGS=()
 has_port=false
+has_addr=false
 i=0
 while [ $i -lt $# ]; do
   arg="${@:$((i+1)):1}"
@@ -42,6 +43,23 @@ while [ $i -lt $# ]; do
       i=$((i+1))
     fi
     has_port=true
+  elif [[ "$arg" == "--address" ]]; then
+    # Translate --address X to --server.address X
+    next_arg="${@:$((i+2)):1}"
+    ARGS+=("--server.address")
+    if [[ -n "$next_arg" && ! "$next_arg" =~ ^-- ]]; then
+      ARGS+=("$next_arg")
+      i=$((i+1))
+    fi
+    has_addr=true
+  elif [[ "$arg" == "--server.address" ]]; then
+    ARGS+=("$arg")
+    next_arg="${@:$((i+2)):1}"
+    if [[ -n "$next_arg" && ! "$next_arg" =~ ^-- ]]; then
+      ARGS+=("$next_arg")
+      i=$((i+1))
+    fi
+    has_addr=true
   else
     ARGS+=("$arg")
   fi
@@ -50,6 +68,9 @@ done
 
 if ! $has_port; then
   ARGS+=("--server.port" "8501")
+fi
+if ! $has_addr; then
+  ARGS+=("--server.address" "0.0.0.0")
 fi
 
 "$VENV/bin/streamlit" run grey_hat_ai/app.py "${ARGS[@]}"
