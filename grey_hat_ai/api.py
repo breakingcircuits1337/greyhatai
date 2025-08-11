@@ -53,6 +53,8 @@ grey_hat_ai = GreyHatAI()
 # --- Models ---
 class ChatRequest(BaseModel):
     message: str
+    provider: str = None  # Optional, name must match LLMManager's
+    model: str = None     # Optional, model name for the selected provider
 
 class ChatResponse(BaseModel):
     content: str
@@ -64,6 +66,28 @@ class AutoTestRequest(BaseModel):
 
 class AutoTestResponse(BaseModel):
     queued: bool
+
+# --- Config Endpoint ---
+
+class ConfigRequest(BaseModel):
+    provider: str
+    api_key: str
+
+class ConfigResponse(BaseModel):
+    success: bool
+    message: str
+
+@app.post("/config", response_model=ConfigResponse)
+async def config(request: ConfigRequest):
+    """
+    Configure API key for a provider.
+    Ollama (local) requires no API key; only call this for remote providers.
+    """
+    try:
+        llm_manager.set_api_key(request.provider, request.api_key)
+        return {"success": True, "message": f"API key for '{request.provider}' set."}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
 
 # --- Endpoints ---
 
@@ -84,9 +108,17 @@ def generate_response(
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
-    # Call LLMManager's generate_response and log to scratchpad
-    response = llm_manager.generate_response(request.message, [])
-    # response is an LLMResponse object with attributes content, provider, model
+    """
+    Chat with the assistant. Optionally specify provider/model:
+    provider: one of ["ollama", "gemini", "mistral", "groq"]
+    model: model id for the provider.
+    Ollama (local) requires no API key; others require configuration via /config.
+    """
+    provider = request.provider if request.provider else getattr(llm_manager, "provider", None)
+    model = request.model if request.model else getattr(llm_manager, "model", None)
+    # Add minimal context, could be enhanced later
+    context = []
+    response = llm_manager.generate_response(request.message, context, provider, model)
     scratchpad_store.append({
         "role": "user",
         "content": request.message
