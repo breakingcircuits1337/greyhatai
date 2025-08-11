@@ -124,7 +124,8 @@ async def clear_scratchpad():
 # --- Voice Endpoints ---
 
 from fastapi.responses import StreamingResponse, JSONResponse
-from fastapi import status, BackgroundTasks
+from fastapi import status, BackgroundTasks, UploadFile, File, Form, Query
+import uuid
 
 @app.get("/voice/voices")
 async def get_voices():
@@ -153,6 +154,32 @@ async def voice_stop():
     """
     voice_engine.stop_listening()
     return {"status": "stopped"}
+
+@app.post("/voice/train")
+async def voice_train(
+    voice_id: str = Form(...),
+    transcript: str = Form(...),
+    audio_file: UploadFile = File(...),
+):
+    """
+    Start a new voice training job.
+    """
+    job_id = str(uuid.uuid4())
+    voice_engine.training_jobs[job_id] = {"status": "queued", "progress": 0, "voice_id": voice_id}
+    audio_bytes = await audio_file.read()
+    # Spawn training in background
+    voice_engine.train_voice(voice_id, audio_bytes, transcript, job_id)
+    return {"job_id": job_id}
+
+@app.get("/voice/train/status")
+async def voice_train_status(job_id: str = Query(...)):
+    """
+    Get status for a training job.
+    """
+    job = voice_engine.training_jobs.get(job_id)
+    if not job:
+        return JSONResponse({"error": "Job not found"}, status_code=404)
+    return {"job_id": job_id, "status": job["status"], "progress": job["progress"]}
 
 from pydantic import BaseModel
 

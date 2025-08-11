@@ -15,6 +15,7 @@ import queue
 import time
 import wave
 from typing import Optional, Callable, Dict, Any
+import uuid
 from dataclasses import dataclass
 import tempfile
 
@@ -75,6 +76,9 @@ class VoiceConfig:
 
 
 class VoiceEngine:
+    # Training jobs: job_id -> {status, progress, voice_id}
+    training_jobs: Dict[str, Dict] = {}
+
     def __init__(self, config: VoiceConfig):
         self.config = config
         # ... other init ...
@@ -402,22 +406,12 @@ class VoiceEngine:
     def text_to_speech(self, text: str, voice_id: str = None, provider: str = None) -> Optional[bytes]:
         """
         Convert text to speech using Eleven Labs (cloud) or Piper (local).
-        
-        Args:
-            text: Text to convert
-            voice_id: Voice ID to use (optional, uses config default)
-            provider: 'elevenlabs' (cloud, default) or 'piper' (local)
-            
-        Returns:
-            Audio data as bytes, or None if failed
         """
         prov = provider or getattr(self.config, "provider", "elevenlabs")
         if prov == "piper":
-            # Local Piper TTS
             try:
                 if not hasattr(self, "_piper_instance"):
                     from piper_engine import PiperVoice
-                    # Use provided voice_id or a safe default
                     load_voice = voice_id or "en_US-amy-low"
                     self._piper_instance = PiperVoice.load(load_voice)
                 wav_bytes = self._piper_instance.synthesize(text)
@@ -430,14 +424,14 @@ class VoiceEngine:
         if not self.elevenlabs_configured or not generate:
             logger.error("Eleven Labs not configured or available")
             return None
-            
+
         voice_id = voice_id or self.config.elevenlabs_voice_id
-        
+
         # Check cache first
         cache_key = f"{prov}:{voice_id}:{hash(text)}"
         if cache_key in self.tts_cache:
             return self.tts_cache[cache_key]
-        
+
         try:
             audio = generate(
                 text=text,
@@ -450,22 +444,43 @@ class VoiceEngine:
                     }
                 )
             )
-            
+
             # Cache the result
             self.tts_cache[cache_key] = audio
-            
+
             # Limit cache size
             if len(self.tts_cache) > 50:
-                # Remove oldest entries
                 oldest_keys = list(self.tts_cache.keys())[:10]
                 for key in oldest_keys:
                     del self.tts_cache[key]
-            
+
             return audio
-            
+
         except Exception as e:
             logger.error(f"TTS error: {e}")
             return None
+
+    def train_voice(self, voice_id: str, audio_bytes: bytes, transcript: str, job_id: str):
+        """
+        Simulate per-language TTS training, reporting progress in self.training_jobs[job_id].
+        """
+        import threading, time
+        def _train():
+            self.training_jobs[job_id]["status"] = "in_progress"
+            self.training_jobs[job_id]["progress"] = 0
+            self.training_jobs[job_id]["voice_id"] = voice_id
+            try:
+                for p in range(1, 11):
+                    time.sleep(1)
+                    self.training_jobs[job_id]["progress"] = p * 10
+                # Simulate registering the new voice with Piper (stub)
+                # In reality, save and register the trained model here
+                self.training_jobs[job_id]["status"] = "completed"
+                self.training_jobs[job_id]["progress"] = 100
+            except Exception as e:
+                self.training_jobs[job_id]["status"] = "failed"
+                self.training_jobs[job_id]["progress"] = 0
+        threading.Thread(target=_train, daemon=True).start()
     
     def play_audio(self, audio_data: bytes):
         """

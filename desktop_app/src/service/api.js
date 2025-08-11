@@ -52,6 +52,25 @@ export async function setConfig(provider, apiKey) {
   return await res.json();
 }
 
+export async function startTraining(voiceId, transcript, file) {
+  const form = new FormData();
+  form.append("voice_id", voiceId);
+  form.append("transcript", transcript);
+  form.append("audio_file", file);
+  const res = await fetch(`${BASE}/voice/train`, {
+    method: "POST",
+    body: form
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return await res.json();
+}
+
+export async function getTrainingStatus(jobId) {
+  const res = await fetch(`${BASE}/voice/train/status?job_id=${encodeURIComponent(jobId)}`);
+  if (!res.ok) throw new Error(await res.text());
+  return await res.json();
+}
+
 // --- VOICE API ---
 
 export async function getVoices() {
